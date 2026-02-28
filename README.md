@@ -1,23 +1,24 @@
 # StudyStream
 
 **🛠 Changelog: Optimization & Performance Update (v2.1)**
-🚀 Performance Enhancements
+
+**🚀 Performance Enhancements**
 CPU Overhead Reduction: Eliminated "Layout Thrashing" by implementing DOM Caching. Reference pointers for displayEl, pauseBtn, and labelInput are now stored on initialization instead of being queried 60 times per second.
 
-Render Throttling: Added a String-Diffing Guard in the main loop. The browser now skips the expensive "Paint" and "Composite" steps if the timer's centiseconds haven't actually changed.
+**Render Throttling**: Added a String-Diffing Guard in the main loop. The browser now skips the expensive "Paint" and "Composite" steps if the timer's centiseconds haven't actually changed.
 
-Hardware Acceleration: Forced GPU Compositing for the background grid using translateZ(0) and backface-visibility: hidden. This offloads the 3D perspective math from the CPU to the Mac's GPU.
+**Hardware Acceleration**: Forced GPU Compositing for the background grid using translateZ(0) and backface-visibility: hidden. This offloads the 3D perspective math from the CPU to the Mac's GPU.
 
-Memory Management: Replaced high-frequency setInterval scrolling with a stochastic (randomized) setTimeout glitch effect for the document title, significantly reducing "Idle Wake Ups."
+**Memory Management:** Replaced high-frequency setInterval scrolling with a stochastic (randomized) setTimeout glitch effect for the document title, significantly reducing "Idle Wake Ups."
 
-🎨 UI/UX Improvements
-Aesthetic Glitch Title: Implemented a randomized title scrambler using Cyberpunk-themed characters (Ø, Σ, ▓) for a more "system-authentic" feel.
+**🎨 UI/UX Improvements**
+**Aesthetic Glitch Title:**_Implemented a randomized title scrambler using Cyberpunk-themed characters (Ø, Σ, ▓) for a more "system-authentic" feel.
 
-GPU-Optimized Shadows: Simplified expensive text-shadow layers to a single high-performance glow, reducing the complexity of every frame redraw.
+**GPU-Optimized Shadows**: Simplified expensive text-shadow layers to a single high-performance glow, reducing the complexity of every frame redraw.
 
-Responsive Scaling: Integrated clamp() and vmin units for the timer display to ensure a seamless "always-on-top" experience across different window sizes.
+**Responsive Scaling:** Integrated clamp() and vmin units for the timer display to ensure a seamless "always-on-top" experience across different window sizes.
 
-🔧 Logic & Stability
+**🔧 Logic & Stability**
 Synchronized Timing: Migrated to requestAnimationFrame (rAF) for the main timer loop, ensuring the UI refreshes in perfect sync with the monitor's refresh rate (Hz).
 
 Firebase Integrity: Maintained real-time cloud synchronization for the DAILY_TOTAL and SYSTEM_LOG while keeping the main thread lean
