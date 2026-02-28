@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<!-- saved from url=(0057)file:///Users/ejdeguzman/Downloads/online_viewer_net.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STUDY STREAM v2</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syncopate:wght@700&family=Funnel+Display:wght@700&display=swap');
+
+        :root {
+            --bg: #020205;
+            --neon-yellow: #fefe03;
+            --neon-pink: #ff00ff;
+            --neon-cyan: #00f3ff;
+            --neon-green: #39ff14;
+            --cyber-orange: #ff8c00;
+            --electric-violet: #8f00ff;
+            --text: #e0e0e0;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* added */
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            perspective: 1000px;
+        }
+
+        .grid-bg {
+            position: fixed;
+            bottom: 0; left: -50%; width: 200%; height: 100vh;
+            background-image: 
+                linear-gradient(var(--neon-cyan) 1px, transparent 1px),
+                linear-gradient(90deg, var(--neon-cyan) 1px, transparent 1px);
+            background-size: 80px 80px;
+            transform: rotateX(70deg);
+            transform-origin: center bottom;
+            animation: grid-move 3s infinite linear;
+            z-index: -1;
+            opacity: 0.25;
+            mask-image: linear-gradient(to top, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 80%);
+            -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 80%);
+        }
+
+        @keyframes grid-move {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 80px; }
+        }
+
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 900px;
+            z-index: 10;
+        }
+
+        .timer-wrapper {
+            position: relative;
+            margin: 60px 0;
+            padding: 20px 80px;
+            max-width: 100%;
+        }
+
+        .timer-wrapper::before, .timer-wrapper::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            width: 50px;
+            height: 100%;
+            border: 3px solid var(--neon-yellow);
+            filter: drop-shadow(0 0 10px var(--neon-yellow));
+            animation: glow-pulse 3s infinite alternate;
+        }
+
+        .timer-wrapper::before {
+            left: 0;
+            border-right: none;
+            clip-path: polygon(0 0, 100% 0, 100% 15%, 20% 15%, 20% 85%, 100% 85%, 100% 100%, 0 100%);
+        }
+
+        .timer-wrapper::after {
+            right: 0;
+            border-left: none;
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 85%, 80% 85%, 80% 15%, 0 15%);
+        }
+
+        #display {
+            font-family: 'Funnel Display', sans-serif;
+            font-size: clamp(5rem, 12vmin, 11rem);
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 0 10px #ffffff, 0 0 30px rgba(255, 255, 255, 0.6);
+            letter-spacing: -2px;
+            font-variant-numeric: tabular-nums;
+            margin: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #display.paused {
+            opacity: 0.5;
+        }
+
+        @keyframes glow-pulse {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
+        }
+
+        input[type="text"] {
+            background: rgba(143, 0, 255, 0.05);
+            border: 1px solid var(--electric-violet);
+            box-shadow: inset 0 0 10px rgba(143, 0, 255, 0.2);
+            color: #fff;
+            font-family: 'Space Mono', monospace;
+            font-size: 1rem;
+            padding: 12px 20px;
+            width: 320px;
+            text-align: center;
+            outline: none;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        input[type="text"]:focus {
+            box-shadow: 0 0 20px rgba(143, 0, 255, 0.4), inset 0 0 10px rgba(143, 0, 255, 0.2);
+            border-color: #be66ff;
+        }
+
+        .controls {
+            margin-top: 40px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: rgba(0,0,0,0.5);
+            padding: 12px 25px;
+            font-family: 'Space Mono', monospace;
+            text-transform: uppercase;
+            cursor: pointer;
+            font-weight: 700;
+            transition: 0.3s;
+            border-radius: 2px;
+            letter-spacing: 2px;
+            font-size: 0.85rem;
+        }
+
+        .btn-start { border: 2px solid var(--neon-cyan); color: var(--neon-cyan); }
+        .btn-start:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 30px var(--neon-cyan); }
+
+        .btn-pause { border: 2px solid var(--cyber-orange); color: var(--cyber-orange); }
+        .btn-pause.active { animation: pause-pulse 1.5s infinite; background: var(--cyber-orange); color: #000; }
+        
+        @keyframes pause-pulse {
+            0% { box-shadow: 0 0 0px var(--cyber-orange); }
+            50% { box-shadow: 0 0 25px var(--cyber-orange); }
+            100% { box-shadow: 0 0 0px var(--cyber-orange); }
+        }
+
+        .btn-stop { border: 2px solid var(--neon-pink); color: var(--neon-pink); }
+        .btn-stop:hover { background: var(--neon-pink); color: #000; box-shadow: 0 0 30px var(--neon-pink); }
+
+        .btn-reset { border: 2px solid #555; color: #555; }
+        .btn-reset:hover { background: #555; color: #fff; }
+
+        .log-section {
+            margin-top: 60px;
+            background: rgba(10, 10, 15, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            max-height: 300px;
+            overflow-y: auto;
+            backdrop-filter: blur(15px);
+            width: 100%;
+        }
+
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .time-val { color: var(--neon-yellow); text-shadow: 0 0 5px var(--neon-yellow); }
+
+        .btn-export, .btn-clear {
+            border: 1px solid var(--neon-yellow);
+            color: var(--neon-yellow);
+            font-size: 0.7rem;
+            padding: 6px 12px;
+            margin-left: 10px;
+        }
+        .btn-export:hover, .btn-clear:hover { background: var(--neon-yellow); color: #000; }
+        .btn-clear { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .btn-clear:hover { background: var(--neon-pink); color: #000; }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="container">
+        <input type="text" id="labelInput" placeholder="&gt; Input_task &lt;">
+        <div class="timer-wrapper">
+            <div id="display">00:00:00.00</div>
+        </div>
+         <div class="controls">
+            <button class="btn-start" onclick="start()">RUN</button>
+            <button class="btn-pause" id="pauseBtn" onclick="pause()">PAUSE</button>
+            <button class="btn-stop" onclick="stop()">TERMINATE</button>
+            <button class="btn-reset" onclick="reset()">RESET</button>
+        </div>
+
+        <div class="log-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <span style="color: #444; font-size: 0.7rem; letter-spacing: 2px;">// SYSTEM_LOG.DAT</span>
+                <div>
+                    <button class="btn-clear" onclick="clearLog()">Clear_Log</button>
+                    <button class="btn-export" onclick="exportCSV()">Export_Log</button>
+                </div>
+            </div>
+            <div id="sessionLog"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue, remove } 
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD4N2Aq2eI-ZkZEUL5oeQqCR4jPFpBywAk",
+            authDomain: "study-stream-v2.firebaseapp.com",
+            databaseURL: "https://study-stream-v2-default-rtdb.asia-southeast1.firebasedatabase.app", 
+            projectId: "study-stream-v2",
+            storageBucket: "study-stream-v2.firebasestorage.app",
+            messagingSenderId: "669028994102",
+            appId: "1:669028994102:web:bc419b7398ef5c1a1e9c97"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const sessionsRef = ref(db, 'sessions');
+
+        let startTime, timerInterval;
+        let elapsedTime = 0;
+
+        function timeToString(time) {
+            let hh = Math.floor(time / 3600000);
+            let mm = Math.floor((time % 3600000) / 60000);
+            let ss = Math.floor((time % 60000) / 1000);
+            let ms = Math.floor((time % 1000) / 10); 
+            return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}.${ms.toString().padStart(2, "0")}`;
+        }
+
+        // NEW: Function to calculate total time for TODAY
+        function calculateDailyTotal(sessionList) {
+            const todayStr = new Date().toLocaleDateString();
+            let totalMs = 0;
+
+            sessionList.forEach(s => {
+                // Check if session belongs to today
+                if (s.timestamp && s.timestamp.includes(todayStr)) {
+                    const parts = s.duration.split(/[:.]/);
+                    // hh:mm:ss.ms -> [hh, mm, ss, ms]
+                    const ms = (parseInt(parts[0]) * 3600000) + 
+                               (parseInt(parts[1]) * 60000) + 
+                               (parseInt(parts[2]) * 1000) + 
+                               (parseInt(parts[3]) * 10);
+                    totalMs += ms;
+                }
+            });
+
+            const hh = Math.floor(totalMs / 3600000);
+            const mm = Math.floor((totalMs % 3600000) / 60000);
+            const ss = Math.floor((totalMs % 60000) / 1000);
+            
+            return `${hh}h ${mm}m ${ss}s`;
+        }
+
+        window.start = function() {
+            if (timerInterval) return;
+            document.getElementById("pauseBtn").classList.remove("active");
+            document.getElementById("display").classList.remove("paused");
+            startTime = Date.now() - elapsedTime;
+            timerInterval = setInterval(() => {
+                elapsedTime = Date.now() - startTime;
+                document.getElementById("display").innerText = timeToString(elapsedTime);
+            }, 10);
+        };
+
+        window.pause = function() {
+            if (!timerInterval) return;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            document.getElementById("pauseBtn").classList.add("active");
+            document.getElementById("display").classList.add("paused");
+        };
+
+        window.stop = function() {
+            if (elapsedTime === 0) return;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            const labelInput = document.getElementById("labelInput");
+            const label = labelInput.value.trim() || "CORE_SESSION";
+            const newSessionRef = push(sessionsRef);
+            set(newSessionRef, {
+                label: label,
+                duration: timeToString(elapsedTime),
+                timestamp: new Date().toLocaleString(),
+                createdAt: Date.now()
+            });
+            reset();
+        };
+
+        window.reset = function() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            elapsedTime = 0;
+            document.getElementById("display").innerText = "00:00:00.00";
+            document.getElementById("display").classList.remove("paused");
+            document.getElementById("pauseBtn").classList.remove("active");
+        };
+
+        window.clearLog = function() {
+            if(confirm("Confirm: Purge all cloud session data?")) {
+                remove(sessionsRef);
+            }
+        };
+
+        onValue(sessionsRef, (snapshot) => {
+            const data = snapshot.val();
+            const logEl = document.getElementById("sessionLog");
+            
+            if (!data) {
+                logEl.innerHTML = `<div style="color: #444; text-align: center; padding: 20px;">NO_DATA_FOUND</div>`;
+                window.currentSessions = [];
+                return;
+            }
+            
+            const sessionList = Object.values(data).sort((a, b) => b.createdAt - a.createdAt);
+            window.currentSessions = sessionList;
+
+            // Update Daily Total Display
+            const totalDisplay = calculateDailyTotal(sessionList);
+            const logHeader = document.querySelector('.log-section span');
+            logHeader.innerHTML = `// SYSTEM_LOG.DAT | <span style="color:var(--neon-green)">DAILY_TOTAL: ${totalDisplay}</span>`;
+
+            logEl.innerHTML = sessionList.map(s => `
+                <div class="session-item">
+                    <span class="label-val">> ${s.label}</span>
+                    <span class="time-val">${s.duration}</span>
+                </div>
+            `).join('');
+        });
+
+        window.exportCSV = function() {
+            if (!window.currentSessions || window.currentSessions.length === 0) return;
+            let csv = "Label,Duration,Time\n" + window.currentSessions.map(s => `"${s.label}","${s.duration}","${s.timestamp}"`).join("\n");
+            let link = document.createElement("a");
+            link.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
+            link.download = "cyber_log.csv";
+            link.click();
+        };
+
+        const baseTitle = "STUDY STREAM v2";
+        let titleIndex = 0;
+        setInterval(() => {
+            const scrolling = baseTitle.slice(titleIndex) + " • " + baseTitle.slice(0, titleIndex);
+            document.title = scrolling;
+            titleIndex = (titleIndex + 1) % baseTitle.length;
+        }, 250);
+    </script>
+
+</body></html># StudyStream
