@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- saved from url=(0057)file:///Users/ejdeguzman/Downloads/online_viewer_net.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,13 +38,14 @@
                 linear-gradient(var(--neon-cyan) 1px, transparent 1px),
                 linear-gradient(90deg, var(--neon-cyan) 1px, transparent 1px);
             background-size: 80px 80px;
-            transform: rotateX(70deg);
+            transform: rotateX(70deg) translateZ(0);
             transform-origin: center bottom;
             animation: grid-move 3s infinite linear;
             z-index: -1;
-            opacity: 0.25;
+            opacity: 0.50;
             mask-image: linear-gradient(to top, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 80%);
             -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 80%);
+            backface-visibility: hidden;
         }
 
         @keyframes grid-move {
@@ -91,11 +91,12 @@
         }
 
         #display {
+            will-change: transform; /* Hints the browser to use the GPU */
             font-family: 'Funnel Display', sans-serif;
             font-size: clamp(5rem, 12vmin, 11rem);
             font-weight: 700;
             color: #ffffff;
-            text-shadow: 0 0 10px #ffffff, 0 0 30px rgba(255, 255, 255, 0.6);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
             letter-spacing: -2px;
             font-variant-numeric: tabular-nums;
             margin: 0;
@@ -104,6 +105,7 @@
 
         #display.paused {
             opacity: 0.5;
+            will-change: contents;
         }
 
         @keyframes glow-pulse {
@@ -218,9 +220,7 @@
 
         <div class="log-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <span style="color: #444; font-size: 0.7rem; letter-spacing: 2px;">
-                    // SYSTEM_LOG.DAT | <span id="syncStatus" style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; background:gray;"></span>
-                </span>
+                <span style="color: #444; font-size: 0.7rem; letter-spacing: 2px;">// SYSTEM_LOG.DAT</span>
                 <div>
                     <button class="btn-clear" onclick="clearLog()">Clear_Log</button>
                     <button class="btn-export" onclick="exportCSV()">Export_Log</button>
@@ -248,92 +248,90 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const sessionsRef = ref(db, 'sessions');
-        const connectedRef = ref(db, ".info/connected");
 
-        let startTime, timerInterval;
-        let elapsedTime = 0;
+        // 1. CACHED ELEMENTS (CPU SAVERS)
+    const displayEl = document.getElementById("display");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const labelInput = document.getElementById("labelInput");
+    const logEl = document.getElementById("sessionLog");
 
-        // --- NEW: CONNECTION MONITOR ---
-        onValue(connectedRef, (snap) => {
-            const statusEl = document.getElementById("syncStatus");
-            if (snap.val() === true) {
-                statusEl.style.background = "var(--neon-green)";
-                statusEl.style.boxShadow = "0 0 10px var(--neon-green)";
-                statusEl.title = "SYSTEM_ONLINE";
-            } else {
-                statusEl.style.background = "var(--neon-pink)";
-                statusEl.style.boxShadow = "0 0 10px var(--neon-pink)";
-                statusEl.title = "SYSTEM_OFFLINE_CACHING";
+    let startTime, animationFrame;
+    let elapsedTime = 0;
+    let lastDisplayString = ""; 
+
+    function timeToString(time) {
+        let hh = Math.floor(time / 3600000);
+        let mm = Math.floor((time % 3600000) / 60000);
+        let ss = Math.floor((time % 60000) / 1000);
+        let ms = Math.floor((time % 1000) / 10); 
+        return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}.${ms.toString().padStart(2, "0")}`;
+    }
+
+    function updateDisplay(timestamp) {
+    elapsedTime = Date.now() - startTime; 
+    const currentString = timeToString(elapsedTime);
+    
+    if (currentString !== lastDisplayString) {
+        displayEl.innerText = currentString;
+        lastDisplayString = currentString;
+    }
+    animationFrame = requestAnimationFrame(updateDisplay);
+}
+
+    function calculateDailyTotal(sessionList) {
+        const todayStr = new Date().toLocaleDateString();
+        let totalMs = 0;
+        sessionList.forEach(s => {
+            if (s.timestamp && s.timestamp.includes(todayStr)) {
+                const parts = s.duration.split(/[:.]/);
+                totalMs += (parseInt(parts[0]) * 3600000) + (parseInt(parts[1]) * 60000) + (parseInt(parts[2]) * 1000) + (parseInt(parts[3]) * 10);
             }
         });
+        const hh = Math.floor(totalMs / 3600000);
+        const mm = Math.floor((totalMs % 3600000) / 60000);
+        const ss = Math.floor((totalMs % 60000) / 1000);
+        return `${hh}h ${mm}m ${ss}s`;
+    }
 
-        function timeToString(time) {
-            let hh = Math.floor(time / 3600000);
-            let mm = Math.floor((time % 3600000) / 60000);
-            let ss = Math.floor((time % 60000) / 1000);
-            let ms = Math.floor((time % 1000) / 10); 
-            return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}.${ms.toString().padStart(2, "0")}`;
-        }
+    window.start = function() {
+        if (animationFrame) return; 
+        pauseBtn.classList.remove("active");
+        displayEl.classList.remove("paused");
+        startTime = Date.now() - elapsedTime;
+        animationFrame = requestAnimationFrame(updateDisplay);
+    };
 
-        function calculateDailyTotal(sessionList) {
-            const todayStr = new Date().toLocaleDateString();
-            let totalMs = 0;
-            sessionList.forEach(s => {
-                if (s.timestamp && s.timestamp.includes(todayStr)) {
-                    const parts = s.duration.split(/[:.]/);
-                    const ms = (parseInt(parts[0]) * 3600000) + (parseInt(parts[1]) * 60000) + (parseInt(parts[2]) * 1000) + (parseInt(parts[3]) * 10);
-                    totalMs += ms;
-                }
-            });
-            const hh = Math.floor(totalMs / 3600000);
-            const mm = Math.floor((totalMs % 3600000) / 60000);
-            const ss = Math.floor((totalMs % 60000) / 1000);
-            return `${hh}h ${mm}m ${ss}s`;
-        }
+    window.pause = function() {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+        pauseBtn.classList.add("active");
+        displayEl.classList.add("paused");
+    };
 
-        window.start = function() {
-            if (timerInterval) return;
-            document.getElementById("pauseBtn").classList.remove("active");
-            document.getElementById("display").classList.remove("paused");
-            startTime = Date.now() - elapsedTime;
-            timerInterval = setInterval(() => {
-                elapsedTime = Date.now() - startTime;
-                document.getElementById("display").innerText = timeToString(elapsedTime);
-            }, 10);
-        };
+    window.stop = function() {
+        if (elapsedTime === 0) return;
+        cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+        const label = labelInput.value.trim() || "CORE_SESSION";
+        const newSessionRef = push(sessionsRef);
+        set(newSessionRef, {
+            label: label,
+            duration: timeToString(elapsedTime),
+            timestamp: new Date().toLocaleString(),
+            createdAt: Date.now()
+        });
+        reset();
+    };
 
-        window.pause = function() {
-            if (!timerInterval) return;
-            clearInterval(timerInterval);
-            timerInterval = null;
-            document.getElementById("pauseBtn").classList.add("active");
-            document.getElementById("display").classList.add("paused");
-        };
-
-        window.stop = function() {
-            if (elapsedTime === 0) return;
-            clearInterval(timerInterval);
-            timerInterval = null;
-            const labelInput = document.getElementById("labelInput");
-            const label = labelInput.value.trim() || "CORE_SESSION";
-            const newSessionRef = push(sessionsRef);
-            set(newSessionRef, {
-                label: label,
-                duration: timeToString(elapsedTime),
-                timestamp: new Date().toLocaleString(),
-                createdAt: Date.now()
-            });
-            reset();
-        };
-
-        window.reset = function() {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            elapsedTime = 0;
-            document.getElementById("display").innerText = "00:00:00.00";
-            document.getElementById("display").classList.remove("paused");
-            document.getElementById("pauseBtn").classList.remove("active");
-        };
+    window.reset = function() {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+        elapsedTime = 0;
+        displayEl.innerText = "00:00:00.00";
+        displayEl.classList.remove("paused");
+        pauseBtn.classList.remove("active");
+        lastDisplayString = ""; 
+    };
 
         window.clearLog = function() {
             if(confirm("Confirm: Purge all cloud session data?")) {
@@ -344,19 +342,20 @@
         onValue(sessionsRef, (snapshot) => {
             const data = snapshot.val();
             const logEl = document.getElementById("sessionLog");
+            
             if (!data) {
                 logEl.innerHTML = `<div style="color: #444; text-align: center; padding: 20px;">NO_DATA_FOUND</div>`;
                 window.currentSessions = [];
-                // Reset daily total display if log is cleared
-                const logHeader = document.querySelector('.log-section span');
-                logHeader.innerHTML = `// SYSTEM_LOG.DAT | <span id="syncStatus" style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px;"></span> <span style="color:var(--neon-green)">DAILY_TOTAL: 0h 0m 0s</span>`;
                 return;
             }
+            
             const sessionList = Object.values(data).sort((a, b) => b.createdAt - a.createdAt);
             window.currentSessions = sessionList;
+
+            // Update Daily Total Display
             const totalDisplay = calculateDailyTotal(sessionList);
             const logHeader = document.querySelector('.log-section span');
-            logHeader.innerHTML = `// SYSTEM_LOG.DAT | <span id="syncStatus" style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px;"></span> <span style="color:var(--neon-green)">DAILY_TOTAL: ${totalDisplay}</span>`;
+            logHeader.innerHTML = `// SYSTEM_LOG.DAT | <span style="color:var(--neon-green)">DAILY_TOTAL: ${totalDisplay}</span>`;
 
             logEl.innerHTML = sessionList.map(s => `
                 <div class="session-item">
@@ -375,13 +374,26 @@
             link.click();
         };
 
-        const baseTitle = "STUDY STREAM v2";
-        let titleIndex = 0;
-        setInterval(() => {
-            const scrolling = baseTitle.slice(titleIndex) + " • " + baseTitle.slice(0, titleIndex);
-            document.title = scrolling;
-            titleIndex = (titleIndex + 1) % baseTitle.length;
-        }, 250);
+const baseTitle = "STUDY STREAM v2";
+const glitchChars = ["!", "Ø", "Σ", "▓", "░", "×", "_", "V2"];
+
+function updateTitle() {
+    let title = baseTitle;
+    
+    // 15% chance to glitch on any given check
+    if (Math.random() < 0.15) {
+        const index = Math.floor(Math.random() * title.length);
+        const char = glitchChars[Math.floor(Math.random() * glitchChars.length)];
+        title = title.substring(0, index) + char + title.substring(index + 1);
+    }
+
+    document.title = title;
+
+    // Random delay between 200ms and 1500ms for a "natural" glitch feel
+    setTimeout(updateTitle, Math.random() * 700 + 50);
+}
+
+updateTitle();
     </script>
 
 </body></html>
