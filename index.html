@@ -218,7 +218,9 @@
 
         <div class="log-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <span style="color: #444; font-size: 0.7rem; letter-spacing: 2px;">// SYSTEM_LOG.DAT</span>
+                <span style="color: #444; font-size: 0.7rem; letter-spacing: 2px;">
+                    // SYSTEM_LOG.DAT | <span id="syncStatus" style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; background:gray;"></span>
+                </span>
                 <div>
                     <button class="btn-clear" onclick="clearLog()">Clear_Log</button>
                     <button class="btn-export" onclick="exportCSV()">Export_Log</button>
@@ -246,9 +248,24 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const sessionsRef = ref(db, 'sessions');
+        const connectedRef = ref(db, ".info/connected");
 
         let startTime, timerInterval;
         let elapsedTime = 0;
+
+        // --- NEW: CONNECTION MONITOR ---
+        onValue(connectedRef, (snap) => {
+            const statusEl = document.getElementById("syncStatus");
+            if (snap.val() === true) {
+                statusEl.style.background = "var(--neon-green)";
+                statusEl.style.boxShadow = "0 0 10px var(--neon-green)";
+                statusEl.title = "SYSTEM_ONLINE";
+            } else {
+                statusEl.style.background = "var(--neon-pink)";
+                statusEl.style.boxShadow = "0 0 10px var(--neon-pink)";
+                statusEl.title = "SYSTEM_OFFLINE_CACHING";
+            }
+        });
 
         function timeToString(time) {
             let hh = Math.floor(time / 3600000);
@@ -258,28 +275,19 @@
             return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}.${ms.toString().padStart(2, "0")}`;
         }
 
-        // NEW: Function to calculate total time for TODAY
         function calculateDailyTotal(sessionList) {
             const todayStr = new Date().toLocaleDateString();
             let totalMs = 0;
-
             sessionList.forEach(s => {
-                // Check if session belongs to today
                 if (s.timestamp && s.timestamp.includes(todayStr)) {
                     const parts = s.duration.split(/[:.]/);
-                    // hh:mm:ss.ms -> [hh, mm, ss, ms]
-                    const ms = (parseInt(parts[0]) * 3600000) + 
-                               (parseInt(parts[1]) * 60000) + 
-                               (parseInt(parts[2]) * 1000) + 
-                               (parseInt(parts[3]) * 10);
+                    const ms = (parseInt(parts[0]) * 3600000) + (parseInt(parts[1]) * 60000) + (parseInt(parts[2]) * 1000) + (parseInt(parts[3]) * 10);
                     totalMs += ms;
                 }
             });
-
             const hh = Math.floor(totalMs / 3600000);
             const mm = Math.floor((totalMs % 3600000) / 60000);
             const ss = Math.floor((totalMs % 60000) / 1000);
-            
             return `${hh}h ${mm}m ${ss}s`;
         }
 
@@ -336,20 +344,19 @@
         onValue(sessionsRef, (snapshot) => {
             const data = snapshot.val();
             const logEl = document.getElementById("sessionLog");
-            
             if (!data) {
                 logEl.innerHTML = `<div style="color: #444; text-align: center; padding: 20px;">NO_DATA_FOUND</div>`;
                 window.currentSessions = [];
+                // Reset daily total display if log is cleared
+                const logHeader = document.querySelector('.log-section span');
+                logHeader.innerHTML = `// SYSTEM_LOG.DAT | <span id="syncStatus" style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px;"></span> <span style="color:var(--neon-green)">DAILY_TOTAL: 0h 0m 0s</span>`;
                 return;
             }
-            
             const sessionList = Object.values(data).sort((a, b) => b.createdAt - a.createdAt);
             window.currentSessions = sessionList;
-
-            // Update Daily Total Display
             const totalDisplay = calculateDailyTotal(sessionList);
             const logHeader = document.querySelector('.log-section span');
-            logHeader.innerHTML = `// SYSTEM_LOG.DAT | <span style="color:var(--neon-green)">DAILY_TOTAL: ${totalDisplay}</span>`;
+            logHeader.innerHTML = `// SYSTEM_LOG.DAT | <span id="syncStatus" style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px;"></span> <span style="color:var(--neon-green)">DAILY_TOTAL: ${totalDisplay}</span>`;
 
             logEl.innerHTML = sessionList.map(s => `
                 <div class="session-item">
@@ -377,4 +384,4 @@
         }, 250);
     </script>
 
-</body></html># StudyStream
+</body></html>
